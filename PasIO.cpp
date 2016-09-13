@@ -1,3 +1,14 @@
+//
+// This program contains a class for writing array data to binary 
+// files, in a format compatible with the corresponding Python
+// and Fortran versions.
+//
+// State: Not tested
+//
+// Todo: Implement reader (adapt from BinReader.cpp)
+//
+// Last modified 23.08.2016 by Lars Frogner
+//
 #include "PasIO.h"
 
 BinWriter::BinWriter(char const* filename, int block_dim, int* block_shape, int block_size, char dtype, int dbytes): filename(filename), block_shape(block_shape), block_size(block_size), dtype(dtype), dbytes(dbytes) {

@@ -1,3 +1,12 @@
+#
+# This program contains classes for writing/reading array data to/from 
+# binary files, in a format compatible with the corresponding Fortran
+# and C++ versions.
+#
+# State: Functional
+#
+# Last modified 21.08.2016 by Lars Frogner
+#
 import numpy as np
 import sys, os
 import time
