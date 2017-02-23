@@ -12,7 +12,9 @@ module pas_io_module
 !
 implicit none
 
-private :: get_type_name, get_shape_string
+private
+
+public :: get_type_name, get_shape_string
 
 integer, parameter :: DP = kind(0.0d0)
 integer, parameter :: SP = kind(0.0)
@@ -20,7 +22,7 @@ integer, parameter :: LO = selected_int_kind(16)
 integer, parameter :: SH = selected_int_kind(8)
 
 ! Define writer class
-type binary_writer
+type, public :: binary_writer
 
     private ! Make all attributes private unless explicitly specified as public
 
@@ -31,10 +33,12 @@ type binary_writer
     integer, allocatable :: block_shape(:)
     character :: dtype
     integer(SH) :: block_dim, dbytes, block_num
-    integer(8) :: start_count, stop_count
-    real(8) :: count_rate, write_time
+    integer(8) :: start_count, stop_count, count_rate
+    real(DP) :: write_time
 
 contains
+
+    private
 
     ! Declare procedures
     procedure, public :: prepare_write ! Constructor
@@ -46,7 +50,7 @@ contains
 end type binary_writer
 
 ! Define reader class
-type binary_reader
+type, public :: binary_reader
 
     private
 
@@ -60,13 +64,16 @@ type binary_reader
     character :: dtype, packtype
     integer(SH) :: block_dim, block_num, dbytes, read_count
     integer(LO) :: start, block_size
-    integer(8) :: start_count, stop_count
-    real(8) :: count_rate, read_time
+    integer(8) :: start_count, stop_count, count_rate
+    real(DP) :: read_time
 
 contains
+
+    private
     
     procedure, public :: prepare_read ! Constructor
     procedure, public :: read_block
+    procedure, public :: get_block_num
     procedure, public :: print_header_info => print_header_info_reader
     procedure, public :: print_copy_syntax
     procedure, public :: end_read
@@ -99,7 +106,7 @@ subroutine prepare_write(this, filename, block_shape, dtype_dbytes)
     character(len=*), intent(in) :: dtype_dbytes
     character(len=:), allocatable :: fn_noext
     integer(SH), intent(in) :: block_shape(:)
-    integer :: dotpos, read_err, count_rate
+    integer :: dotpos, read_err
 
     ! Make sure that the correct file extension is used
 
@@ -212,8 +219,7 @@ subroutine prepare_write(this, filename, block_shape, dtype_dbytes)
     end if
 
     ! Record start time
-    call system_clock(this%start_count, count_rate)
-    this%count_rate = real(count_rate)
+    call system_clock(this%start_count, this%count_rate)
 
     ! Open binary file for writing
     open(10, file=this%filename, status='replace', form='unformatted', access='stream')
@@ -241,7 +247,7 @@ subroutine write_block(this, block)
     class(binary_writer) :: this
 
     character, intent(in) :: block(this%block_size)
-    integer :: count0, count1
+    integer(8) :: count0, count1
 
     call system_clock(count0)
 
@@ -249,8 +255,8 @@ subroutine write_block(this, block)
 
     call system_clock(count1)
 
-    this%write_time = this%write_time + (count1 - count0)/this%count_rate ! Update total writing time
-    this%block_num = this%block_num + 1                                   ! Update number of data blocks written
+    this%write_time = this%write_time + (count1 - count0)/real(this%count_rate, DP) ! Update total writing time
+    this%block_num = this%block_num + 1                                             ! Update number of data blocks written
 
 end subroutine write_block
 
@@ -325,7 +331,7 @@ subroutine end_write(this, print_report)
 
         ! Print total time
         write(*, '(A, F0.3, A)') 'File open for: ', &
-                                 (this%stop_count - this%start_count)/this%count_rate, ' s'
+                                 (this%stop_count - this%start_count)/real(this%count_rate, DP), ' s'
 
     end if
 
@@ -348,7 +354,7 @@ subroutine prepare_read(this, filename)
     character(len=*), intent(in) :: filename
     character(len=:), allocatable :: fn_noext
     character :: packtype
-    integer :: dotpos, count_rate, i
+    integer :: dotpos, i
 
     ! Make sure that the correct file extension is used
 
@@ -379,8 +385,7 @@ subroutine prepare_read(this, filename)
     deallocate(fn_noext)
 
     ! Record start time
-    call system_clock(this%start_count, count_rate)
-    this%count_rate = real(count_rate)
+    call system_clock(this%start_count, this%count_rate)
 
     ! Open file for reading
     open(10, file=this%filename, status='old', form='unformatted', access='stream')
@@ -520,7 +525,7 @@ subroutine read_block(this, i)
     class(binary_reader) :: this
 
     integer, intent(in) :: i
-    integer :: count0, count1
+    integer(8) :: count0, count1
 
     call system_clock(count0)
 
@@ -528,10 +533,19 @@ subroutine read_block(this, i)
 
     call system_clock(count1)
 
-    this%read_time = this%read_time + (count1 - count0)/this%count_rate ! Update total reading time
-    this%read_count = this%read_count + 1                               ! Update number of data blocks read     
+    this%read_time = this%read_time + (count1 - count0)/real(this%count_rate, DP) ! Update total reading time
+    this%read_count = this%read_count + 1                                         ! Update number of data blocks read     
 
 end subroutine read_block
+
+function get_block_num(this) result(block_num)
+
+    class(binary_reader), intent(in) :: this
+    integer(SH) :: block_num
+
+    block_num = this%block_num
+
+end function get_block_num
 
 subroutine print_header_info_reader(this)
     implicit none
@@ -618,7 +632,7 @@ subroutine end_read(this, print_report)
 
         ! Print total time
         write(*, '(A, F0.3, A)') 'File open for: ', &
-                                 (this%stop_count - this%start_count)/this%count_rate, ' s'
+                                 (this%stop_count - this%start_count)/real(this%count_rate, DP), ' s'
 
     end if
 
